@@ -1,8 +1,10 @@
 {
   "name": "sae",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Скиллы Claude Code для командной работы",
   "author": {
     "name": "sae-life-dev"
-  }
+  },
+  "homepage": "https://github.com/sae-life-dev/sae-claude-plugin",
+  "repository": "https://github.com/sae-life-dev/sae-claude-plugin"
 }

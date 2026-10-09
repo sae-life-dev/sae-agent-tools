@@ -1,0 +1,13 @@
+{
+  "name": "sae-plugins",
+  "description": "Плагины Claude Code от sae-life-dev",
+  "owner": {
+    "name": "sae-life-dev"
+  },
+  "plugins": [
+    {
+      "name": "sae",
+      "source": "./"
+    }
+  ]
+}
