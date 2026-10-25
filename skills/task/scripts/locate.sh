@@ -7,7 +7,9 @@
 # или код из настроек (NO_CONFIG, CONFIG_NO_KEY, TASKS_MISSING, TASKS_UNMARKED). После FOUND —
 # task=empty|filled|missing (в задача.md нет ничего, кроме заголовков, комментариев и строки
 # «**Jira:** …», — empty; файла нет — missing),
-# analysis=none|exists, archived=yes|no. Ничего не меняет.
+# analysis=none|exists, archived=yes|no, jira=<КЛЮЧ>|none (строка «**Jira:** …» в задача.md),
+# materials=none|partial|done (материалы/индекс.md нет — none; иначе status из его шапки,
+# не done — partial). Ничего не меняет.
 set -u
 . "$(dirname "$0")/lib.sh"
 
@@ -96,6 +98,21 @@ if [ -f "$task/анализ.md" ]; then
 else
   analysis=none
 fi
+jira=
+if [ -f "$task/задача.md" ]; then
+  jira=$(awk '
+    { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") }
+    index($0, "**Jira:**") == 1 { v = substr($0, 10); gsub(/^[ \t]+/, "", v); print v; exit }
+  ' "$task/задача.md")
+fi
+[ -n "$jira" ] || jira=none
+if [ ! -f "$task/материалы/индекс.md" ]; then
+  materials=none
+elif [ "$(config_value "$task/материалы/индекс.md" status)" = done ]; then
+  materials=done
+else
+  materials=partial
+fi
 parent=$(dirname "$task")
 case ${parent##*/} in
   _*) archived=yes ;;
@@ -106,3 +123,5 @@ say "FOUND $task"
 say "task=$state"
 say "analysis=$analysis"
 say "archived=$archived"
+say "jira=$jira"
+say "materials=$materials"

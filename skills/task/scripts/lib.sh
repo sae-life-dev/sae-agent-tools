@@ -101,6 +101,110 @@ tasks_root_from_config() {
   tasks_root=$physical_path
 }
 
+# Файл с адресами и токенами Jira и КБ из настроек проекта (ключ atlassian.env) — тот же
+# .env, что у MCP-сервера Atlassian. Успех — путь в $atl_env.
+atlassian_env_from_config() {
+  if [ ! -f "$here/$SAE_CONFIG" ]; then
+    say "NO_CONFIG $here/$SAE_CONFIG"
+    return 1
+  fi
+  value=$(config_value "$here/$SAE_CONFIG" atlassian.env)
+  if [ -z "$value" ]; then
+    say "CONFIG_NO_KEY $here/$SAE_CONFIG atlassian.env"
+    return 1
+  fi
+  abs_path "$value"
+  if [ ! -f "$abs_path" ]; then
+    say "ENV_MISSING $abs_path"
+    return 1
+  fi
+  atl_env=$abs_path
+}
+
+# Значение ключа $2 из .env-файла $1 («КЛЮЧ=значение», кавычки снимаются). Нет — пусто.
+env_value() {
+  KEY=$2 awk '
+    { sub(/\r$/, "") }
+    index($0, ENVIRON["KEY"] "=") == 1 {
+      v = substr($0, length(ENVIRON["KEY"]) + 2)
+      gsub(/^[ \t]+|[ \t]+$/, "", v)
+      q = substr(v, 1, 1)
+      if (length(v) >= 2 && (q == "\047" || q == "\"") && substr(v, length(v), 1) == q)
+        v = substr(v, 2, length(v) - 2)
+      print v
+      exit
+    }
+  ' "$1"
+}
+
+# %XX в строке $1 → байты; «+» не трогается. Результат — в $url_decoded. awk печатает только
+# ASCII (%XX → \0ooo), байты собирает printf %b: так кириллица не зависит от локали awk.
+url_decode() {
+  case $1 in
+    *%[0-9A-Fa-f][0-9A-Fa-f]*) ;;
+    *)
+      url_decoded=$1
+      return 0
+      ;;
+  esac
+  url_decoded=$(printf '%b' "$(printf '%s' "$1" | sed 's/\\/\\\\/g' | awk '
+    function hex(c) { return index("0123456789abcdef", tolower(c)) - 1 }
+    {
+      s = $0; r = ""
+      while ((i = index(s, "%")) > 0 && i + 2 <= length(s)) {
+        h = substr(s, i + 1, 2)
+        if (h ~ /^[0-9A-Fa-f][0-9A-Fa-f]$/) {
+          r = r substr(s, 1, i - 1) sprintf("\\0%03o", hex(substr(h, 1, 1)) * 16 + hex(substr(h, 2, 1)))
+          s = substr(s, i + 3)
+        } else { r = r substr(s, 1, i); s = substr(s, i + 1) }
+      }
+      print r s
+    }')")
+}
+
+# Положить готовый файл $1 в папку $2 под именем $3 (папка создаётся). Имя чистится от «/»,
+# «\» и «:». Такой же файл уже лежит — SAME; другой с тем же именем — к имени добавляется _2,
+# _3… перед расширением. $4 — ожидаемый размер в байтах, необязательно. Исходник не трогается.
+# Печатает SAVED|SAME <путь> и size=<байт>; при несовпадении размера — SIZE_MISMATCH, код 1.
+place_file() {
+  pf_name=$(printf '%s' "$3" | tr '/\\:' '___')
+  case $pf_name in
+    '' | . | ..) pf_name=file ;;
+  esac
+  if ! err=$(mkdir -p "$2" 2>&1); then
+    say "MKDIR_FAILED $2"
+    say "$err"
+    return 1
+  fi
+  case $pf_name in
+    ?*.*) pf_stem=${pf_name%.*}; pf_ext=.${pf_name##*.} ;;
+    *) pf_stem=$pf_name; pf_ext= ;;
+  esac
+  pf_dest=$2/$pf_name
+  pf_n=1
+  pf_state=SAVED
+  while [ -e "$pf_dest" ]; do
+    if cmp -s "$1" "$pf_dest"; then
+      pf_state=SAME
+      break
+    fi
+    pf_n=$((pf_n + 1))
+    pf_dest=$2/${pf_stem}_$pf_n$pf_ext
+  done
+  if [ "$pf_state" = SAVED ] && ! err=$(cp "$1" "$pf_dest" 2>&1); then
+    say "COPY_FAILED $pf_dest"
+    say "$err"
+    return 1
+  fi
+  pf_size=$(wc -c <"$pf_dest" | tr -d ' ')
+  say "$pf_state $pf_dest"
+  say "size=$pf_size"
+  if [ -n "${4:-}" ] && [ "$4" != "$pf_size" ]; then
+    say "SIZE_MISMATCH expected=$4 got=$pf_size"
+    return 1
+  fi
+}
+
 # Имя для записи «<номер>_<имя>»: без пробелов, «/», «\», не с «.» или «-» и не с номера —
 # 1–3 цифры, за ними «_», «-» или конец (годы вроде «2024-…» — можно). Номер ставит скрипт.
 # Не подошло — печатает BAD_NAME и возвращает 1.
