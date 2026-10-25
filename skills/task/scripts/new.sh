@@ -1,6 +1,7 @@
 #!/bin/sh
-# new.sh <имя> <название> [<ключ Jira>] — заводит в папке задач <NNN>_<имя>/задача.md,
-# с ключом — <NNN>_<КЛЮЧ>_<имя>/задача.md и строку «**Jira:** <КЛЮЧ>» под заголовком.
+# new.sh <имя> <название> [<ключ Jira>] — заводит в папке задач <NNN>_<имя>/ с задача.md и
+# правила-задачи.md, с ключом — <NNN>_<КЛЮЧ>_<имя>/ и строку «**Jira:** <КЛЮЧ>» под заголовком
+# задача.md.
 # Папка задач — из настроек проекта (.claude/sae.local.md в рабочей папке, ключ task.dir).
 # Номер — наибольший NNN среди записей «NNN_…» (папок и файлов) в папке задач и в служебных
 # папках «_…» (архив) плюс один. Ключ — вида ABC-123 (латиница заглавными, цифры, «_», дефис,
@@ -65,10 +66,13 @@ tasks_root_from_config || exit 3
 root=$tasks_root
 
 template=$(dirname "$0")/../templates/task.md
-if [ ! -f "$template" ]; then
-  say "NO_TEMPLATE $template"
-  exit 5
-fi
+rules_template=$(dirname "$0")/../templates/rules.md
+for t in "$template" "$rules_template"; do
+  if [ ! -f "$t" ]; then
+    say "NO_TEMPLATE $t"
+    exit 5
+  fi
+done
 
 # Задача с тем же ключом: ключ в имени папки «NNN_<КЛЮЧ>_…» или строка «**Jira:** <КЛЮЧ>»
 # в её задача.md.
@@ -133,6 +137,25 @@ if ! err=$(TITLE=$title JIRA=$jira awk '
   rm -f "$dir/задача.md"
   rmdir "$dir"
   say "WRITE_FAILED $dir/задача.md"
+  say "$err"
+  exit 6
+fi
+# Правила задачи заводятся пустыми сразу: владелец дописывает их, когда понадобится, а скилл
+# читает файл перед любой работой по задаче. Не записался — задачу откатываем целиком, чтобы не
+# оставить её без правил.
+if ! err=$(TITLE=$title awk '
+  {
+    out = ""
+    while ((i = index($0, "__TITLE__")) > 0) {
+      out = out substr($0, 1, i - 1) ENVIRON["TITLE"]
+      $0 = substr($0, i + 9)
+    }
+    print out $0
+  }
+' "$rules_template" 2>&1 >"$dir/правила-задачи.md"); then
+  rm -f "$dir/правила-задачи.md" "$dir/задача.md"
+  rmdir "$dir"
+  say "WRITE_FAILED $dir/правила-задачи.md"
   say "$err"
   exit 6
 fi
