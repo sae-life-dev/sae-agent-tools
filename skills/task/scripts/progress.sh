@@ -95,6 +95,11 @@ fi
 
 if [ -z "$rows" ]; then
   say "NO_SUBTASKS $task"
+  if [ -f "$task/анализ.md" ]; then
+    say "hint=анализ есть, файлов подзадач нет: разбей по steps/split.md (меню «Разбивка есть, подзадач нет»)"
+  else
+    say "hint=ни анализа, ни подзадач: сначала analyze (steps/analyze.md)"
+  fi
   exit 0
 fi
 

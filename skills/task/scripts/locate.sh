@@ -125,3 +125,6 @@ say "analysis=$analysis"
 say "archived=$archived"
 say "jira=$jira"
 say "materials=$materials"
+if [ "$state" = empty ] && [ "$jira" != none ] && [ "$archived" = no ]; then
+  say "hint=задача.md пустой, ключ Jira есть: заполни по steps/fill-task.md (next и analyze ведут туда сами)"
+fi
