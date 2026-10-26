@@ -1,12 +1,20 @@
 #!/bin/sh
 # lib.sh — общее для скриптов скилла task. Подключается: . "$(dirname "$0")/lib.sh"
-# Настройки проекта — .claude/sae.local.md в папке запуска Claude (рабочая папка скрипта),
-# YAML-шапка с плоскими ключами вида task.dir. Папка задач помечена README.md с шапкой
+# Настройки проекта — sae.local.md (YAML-шапка с плоскими ключами вида task.dir) в папке
+# запуска агента (рабочая папка скрипта). Папка задач помечена README.md с шапкой
 # «sae: tasks». Функции, которые могут не сработать, печатают код итога и возвращают 1.
 
-SAE_CONFIG=.claude/sae.local.md
-
 here=$(pwd -P)
+
+# Конфиг проекта (первый найденный): 1) путь из env SAE_CONFIG (относительный — от рабочей
+# папки); 2) sae.local.md в рабочей папке; 3) .claude/sae.local.md (прежнее поведение).
+if [ -n "${SAE_CONFIG:-}" ]; then
+  :
+elif [ -f "$here/sae.local.md" ]; then
+  SAE_CONFIG=sae.local.md
+else
+  SAE_CONFIG=.claude/sae.local.md
+fi
 
 # Строка вывода как есть: echo в sh и dash раскрывает «\b», «\n» и т. п. в путях и именах.
 say() {

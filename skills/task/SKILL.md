@@ -3,23 +3,24 @@ name: task
 description: "Задачи в папках: init [путь] — завести папку задач; new <название> [--jira <ключ>] — завести задачу с номером; collect-jira [путь|номер] — выгрузить через MCP всё по ключу Jira: задачу, подзадачи, связи, статьи КБ вглубь, комментарии и вложения; analyze [путь|номер] — разобрать задачу и написать анализ; split [путь|номер] — разбить задачу на подзадачи по анализу; next [путь|номер] — что дальше по задаче: меню по этапу, работа по шагам подзадач, закрытие. Вызывать, когда просят «/sae:task», «/task», «заведи папку задач», «подготовь место под задачи», «новая задача», «заведи задачу», «выгрузи задачу из Jira», «собери материалы по задаче», «разбери задачу», «сделай анализ задачи», «разбей задачу на подзадачи», «что дальше по задаче», «продолжи задачу», «следующий шаг», «закрой задачу»."
 argument-hint: "init [путь] | new <название> [--jira <ключ>] | collect-jira [путь|номер] | analyze [путь|номер] | split [путь|номер] | next [путь|номер]"
 allowed-tools:
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/recent.sh)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/progress.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/mark.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/close.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/init.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/new.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/locate.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/archive-analysis.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/split.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/archive-materials.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/save.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/decode.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/render.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/links.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/fetch.sh *)
-  - Bash(sh ${CLAUDE_SKILL_DIR}/scripts/from-session.sh *)
+  - Bash(sh scripts/recent.sh)
+  - Bash(sh scripts/progress.sh *)
+  - Bash(sh scripts/mark.sh *)
+  - Bash(sh scripts/close.sh *)
+  - Bash(sh scripts/init.sh *)
+  - Bash(sh scripts/new.sh *)
+  - Bash(sh scripts/locate.sh *)
+  - Bash(sh scripts/archive-analysis.sh *)
+  - Bash(sh scripts/split.sh *)
+  - Bash(sh scripts/archive-materials.sh *)
+  - Bash(sh scripts/save.sh *)
+  - Bash(sh scripts/decode.sh *)
+  - Bash(sh scripts/render.sh *)
+  - Bash(sh scripts/links.sh *)
+  - Bash(sh scripts/fetch.sh *)
+  - Bash(sh scripts/from-session.sh *)
 ---
+Все пути ниже — относительно папки этого скилла (где лежит этот SKILL.md): `scripts/…`, `steps/…`, `templates/…`. Для Claude Code эта папка — `${CLAUDE_SKILL_DIR}`.
 
 # task — задачи в папках
 
@@ -63,12 +64,12 @@ Id этой сессии: `${CLAUDE_SESSION_ID}`. Нужен `collect-jira`, ч�
 
 | Действие | Что делает | Инструкция |
 | --- | --- | --- |
-| `init [путь]` | делает папку папкой задач и запоминает её для проекта; без пути — спрашивает | `${CLAUDE_SKILL_DIR}/steps/init.md` |
-| `new <название> [--jira <ключ>]` | заводит в папке задач задачу `<NNN>_<имя>/` с `задача.md`; номер — следующий по порядку; с ключом Jira — `<NNN>_<КЛЮЧ>_<имя>/`, без `--jira` — спрашивает | `${CLAUDE_SKILL_DIR}/steps/new.md` |
-| `collect-jira [путь\|номер]` | по ключу Jira из `задача.md` выгружает через MCP в `материалы/` задачу, подзадачи, связанные задачи, статьи КБ по ссылкам вглубь, комментарии и все вложения; пауза каждые 50 объектов; прерванную — продолжает; без номера — выбор из трёх последних задач | `${CLAUDE_SKILL_DIR}/steps/collect-jira.md` |
-| `analyze [путь\|номер]` | разбирает задачу и пишет `анализ.md`; `задача.md` пустой, а ключ Jira есть, — предлагает заполнить его по Jira и КБ; без номера — выбор из трёх последних задач | `${CLAUDE_SKILL_DIR}/steps/analyze.md` |
-| `split [путь\|номер]` | по разделу 7 анализа создаёт `подзадачи/NN_<имя>.md` с шагами; повторный запуск — только новые; без номера — выбор из трёх последних задач | `${CLAUDE_SKILL_DIR}/steps/split.md` |
-| `next [путь\|номер]` | определяет этап задачи и предлагает продолжение меню; `задача.md` пустой, а ключ Jira есть, — предлагает заполнить его по Jira и КБ; когда подзадачи есть — выбор: работа или подробное согласование всей задачи по микрошагам (итог в `согласование.md`); ведёт работу по шагам подзадач, закрывает подзадачи и задачу (в `_архив/`); без номера — выбор из трёх последних задач | `${CLAUDE_SKILL_DIR}/steps/next.md` |
+| `init [путь]` | делает папку папкой задач и запоминает её для проекта; без пути — спрашивает | `steps/init.md` |
+| `new <название> [--jira <ключ>]` | заводит в папке задач задачу `<NNN>_<имя>/` с `задача.md`; номер — следующий по порядку; с ключом Jira — `<NNN>_<КЛЮЧ>_<имя>/`, без `--jira` — спрашивает | `steps/new.md` |
+| `collect-jira [путь\|номер]` | по ключу Jira из `задача.md` выгружает через MCP в `материалы/` задачу, подзадачи, связанные задачи, статьи КБ по ссылкам вглубь, комментарии и все вложения; пауза каждые 50 объектов; прерванную — продолжает; без номера — выбор из трёх последних задач | `steps/collect-jira.md` |
+| `analyze [путь\|номер]` | разбирает задачу и пишет `анализ.md`; `задача.md` пустой, а ключ Jira есть, — предлагает заполнить его по Jira и КБ; без номера — выбор из трёх последних задач | `steps/analyze.md` |
+| `split [путь\|номер]` | по разделу 7 анализа создаёт `подзадачи/NN_<имя>.md` с шагами; повторный запуск — только новые; без номера — выбор из трёх последних задач | `steps/split.md` |
+| `next [путь\|номер]` | определяет этап задачи и предлагает продолжение меню; `задача.md` пустой, а ключ Jira есть, — предлагает заполнить его по Jira и КБ; когда подзадачи есть — выбор: работа или подробное согласование всей задачи по микрошагам (итог в `согласование.md`); ведёт работу по шагам подзадач, закрывает подзадачи и задачу (в `_архив/`); без номера — выбор из трёх последних задач | `steps/next.md` |
 
 - Действие есть в таблице — прочитай его инструкцию и выполни по ней.
 - Аргументов нет — покажи таблицу действий и спроси, что сделать. Сам ничего не делай.
