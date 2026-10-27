@@ -1,7 +1,7 @@
 {
   "name": "sae-task",
-  "version": "0.3.0",
-  "description": "Система задач в папках: команды /sae:task для Claude Code и VeAI",
+  "version": "0.3.1",
+  "description": "Система задач в папках: скилл task для Claude Code и VeAI",
   "author": {
     "name": "sae-life-dev"
   },
