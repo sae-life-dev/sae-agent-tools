@@ -7,9 +7,11 @@
 # или код из настроек (NO_CONFIG, CONFIG_NO_KEY, TASKS_MISSING, TASKS_UNMARKED). После FOUND —
 # task=empty|filled|missing (в задача.md нет ничего, кроме заголовков, комментариев и строки
 # «**Jira:** …», — empty; файла нет — missing),
-# analysis=none|exists, archived=yes|no, jira=<КЛЮЧ>|none (строка «**Jira:** …» в задача.md),
-# materials=none|partial|done (материалы/индекс.md нет — none; иначе status из его шапки,
-# не done — partial). Ничего не меняет.
+# analysis=none|exists (анализ.md нет или в нём одни пробелы — none), archived=yes|no,
+# jira=<КЛЮЧ>|none (строка «**Jira:** …» в задача.md), materials=none|partial|done
+# (материалы/индекс.md нет — none; иначе status из его шапки, не done — partial),
+# done_criteria=empty — только при task=filled, если раздел «Как пойму, что готово» пуст или его нет.
+# Ничего не меняет.
 set -u
 . "$(dirname "$0")/lib.sh"
 
@@ -64,36 +66,39 @@ case $1 in
     ;;
 esac
 
+done_criteria=
 if [ ! -f "$task/задача.md" ]; then
   state=missing
-elif awk '
-  { sub(/\r$/, "") }
-  {
-    line = $0
-    out = ""
-    while (line != "") {
-      if (incomment) {
-        i = index(line, "-->")
-        if (i == 0) { line = ""; break }
-        line = substr(line, i + 3)
-        incomment = 0
-      } else {
-        i = index(line, "<!--")
-        if (i == 0) { out = out line; line = "" }
-        else { out = out substr(line, 1, i - 1); line = substr(line, i + 4); incomment = 1 }
-      }
-    }
-    if (out ~ /^[ \t]*#/) next
-    if (out ~ /^[ \t]*\*\*Jira:\*\*/) next
-    if (out ~ /[^ \t]/) { filled = 1; exit }
-  }
-  END { exit !filled }
-' "$task/задача.md"; then
-  state=filled
 else
-  state=empty
+  # Два слова: заполнена ли задача и раздел «Как пойму, что готово» (до следующего # или ##).
+  scan=$(awk '
+    { sub(/\r$/, "") }
+    {
+      line = $0
+      out = ""
+      while (line != "") {
+        if (incomment) {
+          i = index(line, "-->")
+          if (i == 0) { line = ""; break }
+          line = substr(line, i + 3)
+          incomment = 0
+        } else {
+          i = index(line, "<!--")
+          if (i == 0) { out = out line; line = "" }
+          else { out = out substr(line, 1, i - 1); line = substr(line, i + 4); incomment = 1 }
+        }
+      }
+      if (out ~ /^[ \t]*##?[ \t]/) indone = (out ~ /^[ \t]*##?[ \t]+Как пойму, что готово[ \t]*$/)
+      if (out ~ /^[ \t]*#/) next
+      if (out ~ /^[ \t]*\*\*Jira:\*\*/) next
+      if (out ~ /[^ \t]/) { filled = 1; if (indone) done = 1 }
+    }
+    END { print (filled ? "filled" : "empty"), (done ? "filled" : "empty") }
+  ' "$task/задача.md")
+  state=${scan% *}
+  done_criteria=${scan#* }
 fi
-if [ -f "$task/анализ.md" ]; then
+if [ -f "$task/анализ.md" ] && grep -q '[^[:space:]]' "$task/анализ.md"; then
   analysis=exists
 else
   analysis=none
@@ -104,6 +109,10 @@ if [ -f "$task/задача.md" ]; then
     { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") }
     index($0, "**Jira:**") == 1 { v = substr($0, 10); gsub(/^[ \t]+/, "", v); print v; exit }
   ' "$task/задача.md")
+# Прочерк в строке «**Jira:** —» — «ключа нет», как и пустая строка.
+case $jira in
+  ''|[-–—]) jira=none ;;
+esac
 fi
 [ -n "$jira" ] || jira=none
 if [ ! -f "$task/материалы/индекс.md" ]; then
@@ -121,6 +130,9 @@ esac
 
 say "FOUND $task"
 say "task=$state"
+if [ "$state" = filled ] && [ "$done_criteria" = empty ]; then
+  say "done_criteria=empty"
+fi
 say "analysis=$analysis"
 say "archived=$archived"
 say "jira=$jira"
