@@ -1,4 +1,4 @@
-# sae-claude-plugin
+# sae-agent-tools
 
 Маркетплейс независимых подплагинов для ИИ-агентов (sae-life-dev). Подплагин `task` —
 задачи в папках проекта (init / new / collect-jira / analyze / split / next).
@@ -36,7 +36,7 @@ tests/                               # тесты ядра: скрипты на 
 
 | Агент | Как подключить |
 | --- | --- |
-| Claude Code | `/plugin install sae-task --marketplace sae-life-dev/sae-claude-plugin` — скилл и его подкоманды нативно |
+| Claude Code | `/plugin marketplace add sae-life-dev/sae-agent-tools`, затем `/plugin install sae-task@sae-plugins` — скилл и его подкоманды нативно |
 | VeAI CLI | `sh adapters/veai/install.sh` — ставит расширение в `~/.veai/extensions/sae-task` (симлинк на репо). Даёт команды `/sae:task <подкоманда>` и `/sae:task:<подкоманда>` с автодополнением |
 | Прочие агенты | Скрипты и методички — напрямую: любому агенту достаточно уметь запускать sh и читать markdown |
 

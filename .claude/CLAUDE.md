@@ -1,4 +1,4 @@
-# sae-claude-plugin
+# sae-agent-tools
 
 ## Версия плагина
 

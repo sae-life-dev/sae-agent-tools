@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 /**
- * Адаптер плагина sae-claude-plugin для VeAI CLI.
+ * Адаптер плагина sae-agent-tools для VeAI CLI.
  *
  * Сканирует манифесты подкоманд plugins/<подплагин>/skills/<скилл>/commands.json из
  * установленной копии плагина и регистрирует slash-команды с автодополнением. Новый подплагин
@@ -140,7 +140,7 @@ export default function (pi: ExtensionAPI) {
     // чтобы ввод "/sae:task ..." продолжал работать как обычный текст.
     pi.registerCommand("sae:task", {
       description:
-        "sae-claude-plugin не найден: команды скилла task недоступны (SAE_TASK_PLUGIN_DIR?)",
+        "sae-agent-tools не найден: команды скилла task недоступны (SAE_TASK_PLUGIN_DIR?)",
       handler: async (args) => {
         await pi.sendUserMessage(`/sae:task ${args}`.trim());
       },

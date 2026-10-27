@@ -1,10 +1,10 @@
 {
   "name": "sae-task",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Система задач в папках: скилл task для Claude Code и VeAI",
   "author": {
     "name": "sae-life-dev"
   },
-  "homepage": "https://github.com/sae-life-dev/sae-claude-plugin",
-  "repository": "https://github.com/sae-life-dev/sae-claude-plugin"
+  "homepage": "https://github.com/sae-life-dev/sae-agent-tools",
+  "repository": "https://github.com/sae-life-dev/sae-agent-tools"
 }
