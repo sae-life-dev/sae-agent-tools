@@ -3,13 +3,26 @@
 Скиллы командной работы для ИИ-агентов. Скилл `task` — задачи в папках проекта
 (init / new / collect-jira / analyze / split / next).
 
-Скилл агенто-нейтрален: скрипты — POSIX sh, инструкции — обычный markdown,
-конфиг — `sae.local.md` в корне проекта (env `SAE_CONFIG`, см. `skills/task/scripts/lib.sh`).
+## Архитектура: ядро + тонкие адаптеры
+
+- **Ядро** — `skills/task/`: скрипты (POSIX sh), методички (`steps/`, `SKILL.md`),
+  шаблоны, манифест подкоманд `commands.json`. Не зависит от агента.
+  Состояние задач — файлы на диске, конфиг — `sae.local.md` в корне проекта
+  (env `SAE_CONFIG`, см. `skills/task/scripts/lib.sh`).
+- **Адаптеры** — `adapters/`: тонкая обвязка под конкретного клиента, только
+  UI-интеграция, без бизнес-логики. Список подкоманд каждый адаптер читает из
+  `commands.json` — новая подкоманда подхватывается без правки адаптера.
+
+Подкоманды правятся в одном месте: `skills/task/commands.json`, после чего
+`sh skills/task/scripts/sync-manifest.sh` перегенерирует frontmatter `SKILL.md`.
 
 ## Подключение к агентам
 
 | Агент | Как подключить |
 | --- | --- |
-| Claude Code | Установка плагином из marketplace / git (как сейчас, см. `.claude-plugin/plugin.json`) |
-| Veai (OpenIDE) | `ln -s <путь-к-репо>/skills/task <проект>/.veai/skills/task` — скилл станет родным через механизм навыков |
-| Агенты с поддержкой MCP | Через MCP-обёртку над скриптами (скоро, раздел `server/`) |
+| Claude Code | Установка плагином из marketplace / git (`.claude-plugin/plugin.json`); скилл и его подкоманды — нативно |
+| VeAI CLI | `sh adapters/veai/install.sh` — ставит расширение в `~/.veai/extensions/sae-task` (симлинк на репо). Даёт команды `/sae:task <подкоманда>` и `/sae:task:<подкоманда>` с автодополнением |
+| Прочие агенты | Скрипты и методички — напрямую: любому агенту достаточно уметь запускать sh и читать markdown |
+
+Env `SAE_TASK_PLUGIN_DIR` (путь к `skills/task`) переопределяет поиск ядра
+для адаптеров — полезно при нестандартной установке.
