@@ -52,7 +52,7 @@ function repoRootBesideAdapter(): string | null {
 function manifestDirsIn(root: string): string[] {
   const dirs: string[] = [];
   const layouts = [
-    path.join("plugins"), // новая структура
+    path.join(root, "plugins"), // новая структура
     root, // старая структура: skills прямо в корне
   ];
   for (const pluginsRoot of layouts) {
