@@ -6,8 +6,8 @@
   },
   "plugins": [
     {
-      "name": "sae",
-      "source": "./"
+      "name": "sae-task",
+      "source": "./plugins/task"
     }
   ]
 }

@@ -7,9 +7,10 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 /**
  * Адаптер плагина sae-claude-plugin для VeAI CLI.
  *
- * Читает skills/task/commands.json из установленного клона плагина и регистрирует
- * slash-команды с автодополнением. Подкоманды добавляются в плагин — здесь ничего
- * править не нужно: список читается заново при каждом старте.
+ * Сканирует манифесты подкоманд plugins/<подплагин>/skills/<скилл>/commands.json из
+ * установленной копии плагина и регистрирует slash-команды с автодополнением. Новый подплагин
+ * или подкоманда добавляются в плагин — здесь ничего править не нужно: список
+ * читается заново при каждом старте.
  */
 
 interface Subcommand {
@@ -32,36 +33,68 @@ function isSkillDir(dir: string): boolean {
   }
 }
 
-// Ядро рядом с этим адаптером: адаптер ставится симлинком из репозитория
-// плагина, поэтому его собственный реальный путь ведёт к skills/task.
+// Копии плагина рядом с этим адаптером: адаптер ставится симлинком из
+// репозитория плагина, поэтому его собственный реальный путь ведёт к корню.
 // Это главный способ — без установленного Claude Code.
-function coreBesideAdapter(skillName: string): string | null {
+function repoRootBesideAdapter(): string | null {
   try {
     const self = fs.realpathSync(fileURLToPath(import.meta.url));
-    const repoRoot = path.resolve(path.dirname(self), "..", "..", "..");
-    const dir = path.join(repoRoot, "skills", skillName);
-    return isSkillDir(dir) ? dir : null;
+    // .../adapters/veai/sae-task/index.ts -> корень репозитория
+    const root = path.resolve(path.dirname(self), "..", "..", "..");
+    return fs.existsSync(path.join(root, ".claude-plugin", "marketplace.json")) ? root : null;
   } catch {
     return null;
   }
 }
 
-function findSkillDir(skillName: string): string | null {
+// Манифесты одного корня плагина: новая структура plugins/<подплагин>/skills/<скилл>,
+// запасная старая skills/<скилл> (версии до 0.3.0).
+function manifestDirsIn(root: string): string[] {
+  const dirs: string[] = [];
+  const layouts = [
+    path.join("plugins"), // новая структура
+    root, // старая структура: skills прямо в корне
+  ];
+  for (const pluginsRoot of layouts) {
+    try {
+      for (const plugin of fs.readdirSync(pluginsRoot)) {
+        const skillsRoot = path.join(pluginsRoot, plugin, "skills");
+        try {
+          for (const skill of fs.readdirSync(skillsRoot)) {
+            const dir = path.join(skillsRoot, skill);
+            if (isSkillDir(dir) && fs.existsSync(path.join(dir, "commands.json"))) {
+              dirs.push(dir);
+            }
+          }
+        } catch {}
+      }
+    } catch {}
+  }
+  return dirs;
+}
+
+function findManifestDirs(): string[] {
   const home = os.homedir();
 
   const fromEnv = process.env.SAE_TASK_PLUGIN_DIR;
-  if (fromEnv && isSkillDir(fromEnv)) return fromEnv;
+  if (fromEnv) {
+    const dirs = manifestDirsIn(fromEnv);
+    if (dirs.length > 0) return dirs;
+  }
 
-  const besideAdapter = coreBesideAdapter(skillName);
-  if (besideAdapter) return besideAdapter;
+  const besideAdapter = repoRootBesideAdapter();
+  if (besideAdapter) {
+    const dirs = manifestDirsIn(besideAdapter);
+    if (dirs.length > 0) return dirs;
+  }
 
-  const candidates: string[] = [];
+  const roots: string[] = [];
 
   // Клоны плагина, установленные как marketplace в Claude Code.
   const marketplaces = path.join(home, ".claude", "plugins", "marketplaces");
   try {
     for (const entry of fs.readdirSync(marketplaces)) {
-      candidates.push(path.join(marketplaces, entry, "skills", skillName));
+      roots.push(path.join(marketplaces, entry));
     }
   } catch {}
 
@@ -73,28 +106,24 @@ function findSkillDir(skillName: string): string | null {
       for (const plugin of fs.readdirSync(versionsRoot)) {
         const versions = path.join(versionsRoot, plugin);
         for (const version of fs.readdirSync(versions)) {
-          candidates.push(path.join(versions, version, "skills", skillName));
+          roots.push(path.join(versions, version));
         }
       }
     }
   } catch {}
 
-  // Первая копия с commands.json — рабочая (новая версия плагина);
-  // без манифеста — старая версия, берём как запасной вариант.
-  let fallback: string | null = null;
-  for (const dir of candidates) {
-    if (!isSkillDir(dir)) continue;
-    if (fs.existsSync(path.join(dir, "commands.json"))) return dir;
-    fallback ??= dir;
+  for (const root of roots) {
+    const dirs = manifestDirsIn(root);
+    if (dirs.length > 0) return dirs;
   }
-  return fallback;
+  return [];
 }
 
 function readManifest(skillDir: string): Manifest | null {
   try {
     const raw = fs.readFileSync(path.join(skillDir, "commands.json"), "utf8");
     const parsed = JSON.parse(raw) as Manifest;
-    if (!parsed || !Array.isArray(parsed.commands)) return null;
+    if (!parsed || typeof parsed.skill !== "string" || !Array.isArray(parsed.commands)) return null;
     return parsed;
   } catch {
     return null;
@@ -102,10 +131,11 @@ function readManifest(skillDir: string): Manifest | null {
 }
 
 export default function (pi: ExtensionAPI) {
-  const skillDir = findSkillDir("task");
-  const manifest = skillDir ? readManifest(skillDir) : null;
+  const manifests = findManifestDirs()
+    .map(readManifest)
+    .filter((m): m is Manifest => m !== null);
 
-  if (!manifest) {
+  if (manifests.length === 0) {
     // Плагин не найден или устарел: команда-проходняк без подсказок,
     // чтобы ввод "/sae:task ..." продолжал работать как обычный текст.
     pi.registerCommand("sae:task", {
@@ -118,36 +148,39 @@ export default function (pi: ExtensionAPI) {
     return;
   }
 
-  const subs = manifest.commands.filter((c) => c && typeof c.name === "string");
+  for (const manifest of manifests) {
+    const skill = manifest.skill;
+    const subs = manifest.commands.filter((c) => c && typeof c.name === "string");
 
-  // Главная команда: /sae:task <подкоманда> [аргументы] — подсказки подкоманд.
-  pi.registerCommand("sae:task", {
-    description: `задачи sae (${subs.length} подкоманд; плагин: ${path.basename(path.dirname(skillDir))})`,
-    getArgumentCompletions: (argumentPrefix: string) => {
-      const first = argumentPrefix.trim().split(/\s+/)[0] ?? "";
-      return subs
-        .filter((c) => c.name.startsWith(first))
-        .map((c) => ({
-          value: c.name,
-          label: `${c.name}${c.args ? " " + c.args : ""}`,
-          description: c.description ?? "",
-        }));
-    },
-    handler: async (args: string) => {
-      await pi.sendUserMessage(`/sae:task ${args}`.trim());
-    },
-  });
-
-  // Короткие формы: /sae:task:next и т.д. — та же диспетчеризация.
-  for (const c of subs) {
-    pi.registerCommand(`sae:task:${c.name}`, {
-      description: `${manifest.invoke} ${c.name} — ${c.description ?? ""}`.trim(),
-      getArgumentCompletions: c.args
-        ? () => [{ value: c.args!, label: c.args!, description: c.description ?? "" }]
-        : undefined,
+    // Главная команда: /sae:<скилл> <подкоманда> [аргументы] — подсказки подкоманд.
+    pi.registerCommand(`sae:${skill}`, {
+      description: `задачи sae (${subs.length} подкоманд; плагин: ${skill})`,
+      getArgumentCompletions: (argumentPrefix: string) => {
+        const first = argumentPrefix.trim().split(/\s+/)[0] ?? "";
+        return subs
+          .filter((c) => c.name.startsWith(first))
+          .map((c) => ({
+            value: c.name,
+            label: `${c.name}${c.args ? " " + c.args : ""}`,
+            description: c.description ?? "",
+          }));
+      },
       handler: async (args: string) => {
-        await pi.sendUserMessage(`/sae:task ${c.name} ${args}`.trim());
+        await pi.sendUserMessage(`/sae:${skill} ${args}`.trim());
       },
     });
+
+    // Короткие формы: /sae:task:next и т.д. — та же диспетчеризация.
+    for (const c of subs) {
+      pi.registerCommand(`sae:${skill}:${c.name}`, {
+        description: `${manifest.invoke} ${c.name} — ${c.description ?? ""}`.trim(),
+        getArgumentCompletions: c.args
+          ? () => [{ value: c.args!, label: c.args!, description: c.description ?? "" }]
+          : undefined,
+        handler: async (args: string) => {
+          await pi.sendUserMessage(`/sae:${skill} ${c.name} ${args}`.trim());
+        },
+      });
+    }
   }
 }

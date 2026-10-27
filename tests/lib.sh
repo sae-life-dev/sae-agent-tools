@@ -9,7 +9,7 @@
 set -u
 
 tests_dir=$(cd "$(dirname "$0")" && pwd -P) || exit 1
-scripts=$(cd "$tests_dir/../skills/task/scripts" && pwd -P) || exit 1
+scripts=$(cd "$tests_dir/../plugins/task/skills/task/scripts" && pwd -P) || exit 1
 fixtures=$tests_dir/fixtures
 
 passed=0

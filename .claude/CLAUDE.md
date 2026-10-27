@@ -13,7 +13,7 @@
 ## Проверки
 
 Перед коммитом — `sh tests/run.sh`: `claude plugin validate --strict` (marketplace.json и
-plugin.json), проверка версии и тесты скриптов `skills/task/scripts/` на копиях `tests/fixtures/`.
+plugin.json), проверка версии и тесты скриптов `plugins/task/skills/task/scripts/` на копиях `tests/fixtures/`.
 Код выхода 0 — всё прошло; итог в строке `TOTAL`.
 
 Этот файл лежит в `.claude/`, а не в корне: корень репозитория — корень плагина, и

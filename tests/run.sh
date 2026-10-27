@@ -44,7 +44,10 @@ validate() {
 }
 
 validate marketplace.json "$repo"
-validate plugin.json "$repo/.claude-plugin/plugin.json"
+for manifest in "$repo"/plugins/*/.claude-plugin/plugin.json; do
+  [ -f "$manifest" ] || continue
+  validate "${manifest#"$repo"/}" "$manifest"
+done
 
 say ""
 out=$(sh "$tests_dir/check_version.sh" "$repo" </dev/null 2>&1)
